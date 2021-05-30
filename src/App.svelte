@@ -1,6 +1,8 @@
 <script>
-	let canvas = document.getElementById("myCanvas");
-	let ctx = canvas.getContext("2d");
+	import { onMount } from "svelte";
+
+	let canvas;
+	let ctx;
 	document.addEventListener("keydown", keyDownHandler, false);
 	document.addEventListener("keyup", keyUpHandler, false);
 	document.body.style.zoom = "345%";
@@ -30,7 +32,18 @@
 	let gameMap = null;
 	let lastPickUpItem = 0;
 	let playPickUpItemAnimation = false;
-    let swordEquipped = false;
+
+	let rupeeAmount = 0;
+	let linkHearts = 3;
+	let currentLinkHearts = 3;
+	let keyAmount = 0;
+	let bombAmount = 0;
+	let swordEquipped = 0;
+
+	onMount(async () => {
+		canvas = document.getElementById("myCanvas");
+		ctx = canvas.getContext("2d");
+	});
 
 	function GameObject() {
 		this.x = 0;
@@ -57,6 +70,11 @@
 		this.pickUpItemNum = 0;
 		this.isFlame = false;
 		this.isOldWoman = false;
+        this.isRupee = false;
+        this.rupeeValue = 1;
+
+        this.isEnemy = false;
+        this.enemyType = 0;
 	}
 
 	function MapBundle(m, o) {
@@ -64,11 +82,11 @@
 		this.gameobjects = o;
 	}
 
-    function playSound(source) {
-        let sound = new Audio();
-        sound.src = source;
-        sound.play();
-    }
+	function playSound(source) {
+		let sound = new Audio();
+		sound.src = source;
+		sound.play();
+	}
 
 	function keyDownHandler(e) {
 		if (e.keyCode == 37) {
@@ -504,7 +522,7 @@
 								lastPickUpItem = gameObjects[i].pickUpItemNum;
 								swordEquipped = 1;
 								animationCounter = 0;
-                                playSound("./sounds/Item.mp3");
+								playSound("./sounds/Item.mp3");
 						}
 
 						objects.splice(i, 1);
@@ -574,13 +592,11 @@
 				gameObjects[i].counter += 1;
 				if (gameObjects[i].counter % 5 == 0) {
 					if (gameObjects[i].line1Full.length != gameObjects[i].line1Current.length) {
-						gameObjects[i].line1Current =
-                            gameObjects[i].line1Full.substring(0, gameObjects[i].line1Current.length + 1);
-                            playSound("./sounds/LOZ_text_slow.wav");
+						gameObjects[i].line1Current = gameObjects[i].line1Full.substring(0, gameObjects[i].line1Current.length + 1);
+						playSound("./sounds/LOZ_text_slow.wav");
 					} else if (gameObjects[i].line2Full.length != gameObjects[i].line2Current.length) {
-						gameObjects[i].line2Current =
-                            gameObjects[i].line2Full.substring(0, gameObjects[i].line2Current.length + 1);
-                            playSound("./sounds/LOZ_text_slow.wav");
+						gameObjects[i].line2Current = gameObjects[i].line2Full.substring(0, gameObjects[i].line2Current.length + 1);
+						playSound("./sounds/LOZ_text_slow.wav");
 					}
 				}
 
@@ -624,5 +640,178 @@
 			drawGameObjects();
 		}, 1000 / fps);
 	}
+
+	function heartFill(index) {
+		if (currentLinkHearts == index + 0.5) {
+			return "url(#repeat)";
+		} else if (currentLinkHearts >= index + 1) {
+			return "red";
+		} else {
+			return "white";
+		}
+	}
 	draw();
 </script>
+
+<main>
+	<div class="hud">
+		<div class="map" />
+
+		<div class="item-column">
+			<div class="item">
+				<div class="img-container">
+					<img src="/images/hud_rupee.png" height="12" alt="" />
+				</div>
+				<span class="value"><span>X</span>{rupeeAmount}</span>
+			</div>
+			<div class="item">
+				<div class="img-container">
+					<img src="/images/hud_smallKey.png" height="10" alt="" />
+				</div>
+				<span class="value"><span>X</span>{keyAmount}</span>
+			</div>
+			<div class="item">
+				<div class="img-container">
+					<img src="/images/hud_bomb.png" height="9" alt="" />
+				</div>
+				<span class="value"><span>X</span>{bombAmount}</span>
+			</div>
+		</div>
+
+		<div class="alt-hand">
+			<span class="buttonMap">D</span>
+		</div>
+		<div class="main-hand">
+			<span class="buttonMap">F</span>
+			{#if swordEquipped}
+				<img src="images/hud_woodSword.png" alt="" />
+			{/if}
+		</div>
+
+		<div class="life-container">
+			<p class="label">-LIFE-</p>
+			<div class="heart-container">
+				{#each Array(linkHearts) as _, i}
+					<svg xmlns="http://www.w3.org/2000/svg" class="heart" width="7" viewBox="0 0 24 24">
+						<defs>
+							<linearGradient id="half" x1="0%" y1="50%" x2="100%" y2="50%">
+								<stop offset="50%" stop-color="red" />
+								<stop offset="51%" stop-color="white" />
+							</linearGradient>
+							<linearGradient id="repeat" xlink:href="#half" spreadMethod="repeat" />
+						</defs>
+						<path fill={heartFill(i)} d="M12 4.248c-3.148-5.402-12-3.825-12 2.944 0 4.661 5.571 9.427 12 15.808 6.43-6.381 12-11.147 12-15.808 0-6.792-8.875-8.306-12-2.944z" />
+					</svg>
+				{/each}
+			</div>
+		</div>
+	</div>
+
+	<canvas id="myCanvas" width="256" height="240" />
+</main>
+
+<style lang="scss">
+	.hud {
+		display: flex;
+		align-items: center;
+		position: absolute;
+		top: 0;
+		left: 50%;
+		transform: translateX(-50%);
+		background-color: #000;
+		height: 64px;
+		width: 256px;
+
+		.map {
+			height: 48px;
+			width: 72px;
+			background-color: green;
+			margin-left: 8px;
+		}
+
+		.item-column {
+			margin-left: 8px;
+			.item {
+				display: flex;
+				align-items: center;
+				width: 32px;
+				.img-container {
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					height: 16px;
+					width: 12px;
+					margin-right: 1px;
+					img {
+						max-width: 100%;
+						max-height: 100%;
+					}
+				}
+				.value {
+					color: #fff;
+					font-size: 8px;
+					span {
+						display: inline-block;
+						font-size: 5px;
+						margin-right: 2px;
+					}
+				}
+			}
+		}
+
+		.alt-hand,
+		.main-hand {
+			position: relative;
+			height: 32px;
+			width: 16px;
+			border: 2px solid blue;
+			border-radius: 3px;
+			.buttonMap {
+				position: absolute;
+				top: -8px;
+				left: 50%;
+				transform: translateX(-50%);
+				color: #fff;
+				font-size: 12px;
+			}
+		}
+
+		.alt-hand {
+			margin: 0 8px 0 6px;
+		}
+
+		.main-hand {
+			img {
+				width: 6px;
+				position: absolute;
+				top: 5px;
+				left: 3.5px;
+			}
+		}
+
+		.life-container {
+			height: 32px;
+			// background-color: gray;
+			width: 72px;
+			margin-left: 12px;
+			.label {
+				color: #d10505;
+				text-align: center;
+				font-size: 12px;
+				font-weight: 600;
+			}
+
+			.heart-container {
+				display: flex;
+				flex-wrap: wrap;
+				// margin-top: 2px;
+				.heart {
+					position: relative;
+					color: red;
+					font-size: 8px;
+					margin: 2px 2px 0 0;
+				}
+			}
+		}
+	}
+</style>
