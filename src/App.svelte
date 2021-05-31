@@ -1,5 +1,7 @@
 <script>
 	import { onMount } from "svelte";
+    import { GameObject } from "../scripts/classes";
+    import maps from "../scripts/maps";
 
 	let canvas;
 	let ctx;
@@ -7,12 +9,12 @@
 	document.addEventListener("keyup", keyUpHandler, false);
 	document.body.style.zoom = "345%";
 	let fps = 60;
-	let worldTiles = new Image();
-	worldTiles.src = "images/tiles-overworld.png";
 	let rightPressed = false;
 	let leftPressed = false;
 	let upPressed = false;
 	let downPressed = false;
+    let worldTiles = new Image();
+	worldTiles.src = "images/tiles-overworld.png";
 	let link1 = new Image();
 	link1.src = "images/link.png";
 	let hud = new Image();
@@ -30,18 +32,15 @@
 	let linkY = 135;
 	let linkX = 116;
 	let gameObjects = [];
-	let maps = [];
 	let gameMap = null;
 	let lastPickUpItem = 0;
 	let playPickUpItemAnimation = false;
-
 	let rupeeAmount = 0;
 	let linkHearts = 3;
 	let currentLinkHearts = 3;
 	let keyAmount = 0;
 	let bombAmount = 0;
 	let swordEquipped = 0;
-
 	let hasSword = false;
 	let isAttacking = false;
 	let canAttackAgain = true;
@@ -51,54 +50,7 @@
 		ctx = canvas.getContext("2d");
 	});
 
-	function GameObject() {
-		this.x = 0;
-		this.y = 0;
-		this.width = 0;
-		this.height = 0;
-		this.newMap = 0;
-		this.newLinkX = -1;
-		this.newLinkY = -1;
-		this.isPortal = false;
-		this.counter = 0;
-		this.imageNum = 0;
-		this.isText = false;
-		this.line1Full = "";
-		this.line2Full = "";
-		this.line1Current = "";
-		this.line2Current = "";
-		this.line1X = 0;
-		this.line1Y = 0;
-		this.line2X = 0;
-		this.line2Y = 0;
-		this.isOldMan = false;
-		this.isPickUpItem = false;
-		this.pickUpItemNum = 0;
-		this.isFlame = false;
-		this.isOldWoman = false;
-		this.isRupee = false;
-		this.rupeeValue = 1;
-
-		this.isEnemy = false;
-		this.enemyType = 0;
-		this.nextX = 0;
-		this.nextY = 0;
-		this.isAttacking = false;
-		this.health = 0;
-		this.direction = "up";
-		this.enemy = [];
-		this.counter = 0;
-		this.frame = 0;
-		this.needsBounce = false;
-		this.bounceX = 0;
-		this.bounceY = 0;
-	}
-
-	function MapBundle(m, o) {
-		this.map = m;
-		this.gameobjects = o;
-	}
-
+    // game functions
 	function playSound(source) {
 		let sound = new Audio();
 		sound.src = source;
@@ -216,19 +168,19 @@
 				if (currentAnimation == 1) {
 					if (lastButtonPressed == "down") {
 						ctx.drawImage(link1, 0, 84, 16, 27, linkX, linkY, 16, 27);
-                        gameObjectCollision(linkX + 7, linkY + 16, gameObjects, false, true);
+						gameObjectCollision(linkX + 7, linkY + 16, gameObjects, false, true);
 					}
 					if (lastButtonPressed == "up") {
 						ctx.drawImage(link1, 62, 84, 16, 26, linkX, linkY - 14, 16, 26);
-                        gameObjectCollision(linkX + 3, linkY - 14, gameObjects, false, true);
+						gameObjectCollision(linkX + 3, linkY - 14, gameObjects, false, true);
 					}
 					if (lastButtonPressed == "left") {
 						ctx.drawImage(link1, 22, 84, 26, 27, linkX - 10, linkY - 8, 27, 27);
-                        gameObjectCollision(linkX - 8, linkY + 5, gameObjects, false, true);
+						gameObjectCollision(linkX - 8, linkY + 5, gameObjects, false, true);
 					}
 					if (lastButtonPressed == "right") {
 						ctx.drawImage(link1, 84, 84, 30, 26, linkX, linkY - 8, 30, 26);
-                        gameObjectCollision(linkX + 14, linkY + 5, gameObjects, false, true);
+						gameObjectCollision(linkX + 14, linkY + 5, gameObjects, false, true);
 					}
 				}
 				if (animationCounter >= 6) {
@@ -313,148 +265,6 @@
 		}
 	}
 
-	let map7_7 = [
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[61, 61, 61, 61, 61, 61, 61, 2, 2, 61, 61, 61, 61, 61, 61, 61],
-		[61, 61, 61, 61, 28, 61, 62, 2, 2, 61, 61, 61, 61, 61, 61, 61],
-		[61, 61, 61, 62, 2, 2, 2, 2, 2, 61, 61, 61, 61, 61, 61, 61],
-		[61, 61, 62, 2, 2, 2, 2, 2, 2, 61, 61, 61, 61, 61, 61, 61],
-		[61, 62, 2, 2, 2, 2, 2, 2, 2, 60, 61, 61, 61, 61, 61, 61],
-		[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-		[43, 44, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 43, 43],
-		[61, 61, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 61, 61],
-		[61, 61, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 61, 61],
-		[61, 61, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 61, 61],
-		[61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61],
-	];
-
-	let objects7_7 = [];
-
-	let gO = new GameObject();
-	gO.x = 72;
-	gO.y = 72;
-	gO.width = 8;
-	gO.height = 16;
-	gO.newMap = 1;
-	gO.newLinkX = 120;
-	gO.newLinkY = 220;
-	gO.isPortal = true;
-	objects7_7.push(gO);
-
-	gO = new GameObject();
-	gO.x = 160;
-	gO.y = 184;
-	gO.width = 16;
-	gO.height = 16;
-	gO.isEnemy = true;
-	gO.enemyType = 1;
-	gO.direction = "left";
-	objects7_7.push(gO);
-
-	let bundle = new MapBundle(map7_7, objects7_7);
-	maps.push(bundle);
-
-	let mapWoodSword = [
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22],
-		[55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55],
-		[55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 55, 55],
-		[55, 55, 37, 37, 37, 37, 37, 28, 28, 37, 37, 37, 37, 37, 55, 55],
-		[55, 55, 55, 55, 55, 55, 55, 28, 28, 55, 55, 55, 55, 55, 55, 55],
-	];
-	let gameObjectsWoodSword = [];
-
-	// flame left
-	gO = new GameObject();
-	gO.x = 4 * 16 + 8;
-	gO.y = 8 * 16;
-	gO.width = 16;
-	gO.height = 16;
-	gO.newMap = 0;
-	gO.isFlame = true;
-	gameObjectsWoodSword.push(gO);
-
-	// flame right
-	gO = new GameObject();
-	gO.x = 10 * 16 + 8;
-	gO.y = 8 * 16;
-	gO.width = 16;
-	gO.height = 16;
-	gO.newMap = 0;
-	gO.isFlame = true;
-	gameObjectsWoodSword.push(gO);
-
-	// old man
-	gO = new GameObject();
-	gO.x = 7 * 16 + 8;
-	gO.y = 8 * 16;
-	gO.width = 16;
-	gO.height = 16;
-	gO.isOldMan = true;
-	gameObjectsWoodSword.push(gO);
-
-	// old man text
-	gO = new GameObject();
-	gO.isText = true;
-	gO.line1Full = "IT'S DANGEROUS TO GO";
-	gO.line2Full = "ALONE! TAKE THIS.";
-	gO.line1X = 3 * 16;
-	gO.line1Y = 7 * 16;
-	gO.line2X = 4 * 16;
-	gO.line2Y = 8 * 16 - 6;
-	gameObjectsWoodSword.push(gO);
-
-	// portal left
-	gO = new GameObject();
-	gO.x = 112;
-	gO.y = 240;
-	gO.width = 16;
-	gO.height = 16;
-	gO.newMap = 0;
-	gO.newLinkX = 68;
-	gO.newLinkY = 96;
-	gO.isPortal = true;
-	gameObjectsWoodSword.push(gO);
-
-	// portal right
-	gO = new GameObject();
-	gO.x = 128;
-	gO.y = 240;
-	gO.width = 16;
-	gO.height = 16;
-	gO.newMap = 0;
-	gO.newLinkX = 68;
-	gO.newLinkY = 96;
-	gO.isPortal = true;
-	gameObjectsWoodSword.push(gO);
-
-	//sword
-	gO = new GameObject();
-	gO.x = 8 * 16 - 4;
-	gO.y = 9.5 * 16;
-	gO.width = 8;
-	gO.height = 16;
-	gO.isPickUpItem = true;
-	gO.pickUpItemNum = 14;
-	gameObjectsWoodSword.push(gO);
-
-	bundle = new MapBundle(mapWoodSword, gameObjectsWoodSword);
-	maps.push(bundle);
-	gameMap = maps[0].map;
-	gameObjects = maps[0].gameobjects;
-
 	function drawMap(level) {
 		for (let i = 0; i < level.length; i++) {
 			for (let j = 0; j < level[i].length; j++) {
@@ -476,7 +286,7 @@
 		return false;
 	}
 
-	function gameObjectCollision(x, y, objects, isLink, isSword) {
+	function gameObjectCollision(x, y, objects, isLink, isSword, direction) {
 		if (isLink) {
 			for (let i = 0; i < objects.length; i++) {
 				if (x <= objects[i].x + objects[i].width && x + 16 >= objects[i].x && y <= objects[i].y + objects[i].height && y + 16 >= objects[i].y) {
@@ -597,7 +407,7 @@
 								swordEquipped = 1;
 								hasSword = true;
 								animationCounter = 0;
-								playSound("./sounds/Item.mp3");
+								playSound("./sounds/item.mp3");
 						}
 
 						objects.splice(i, 1);
@@ -614,20 +424,104 @@
 			}
 
 			for (let i = 0; i < objects.length; i++) {
-				if (x <= objects[i].x + objects[i].width &&
-                    x + swordW >= objects[i].x &&
-                    y <= objects[i].y + objects[i].height &&
-                    y + swordH >= objects[i].y)
-                {
-					if (objects[i].isEnemy) {
-						objects[i].health -= 1;
-						if (objects[i].health <= 0) {
-							playSound("./sounds/LOZ_enemy_die.wav");
-						} else {
-							playSound("./sounds/LOZ_enemy_hit.wav");
+				if (lastButtonPressed == "left") {
+					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
+						//ctx.fillRect(x + 2, (y+6), swordW, swordH);
+						if (objects[i].isEnemy) {
+							objects[i].needsBounce = true;
+							getBounceLoc(objects[i], false, lastButtonPressed);
+							objects[i].health -= 1;
+							if (objects[i].health == 0) {
+								playSound("./sounds/LOZ_enemy_die.wav");
+							} else {
+								playSound("./sounds/LOZ_enemy_hit.wav");
+							}
+						}
+					}
+				} else if (lastButtonPressed == "right") {
+					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
+						//ctx.fillRect(x - 2, (y+6), swordW, swordH);
+						if (objects[i].isEnemy) {
+							objects[i].needsBounce = true;
+							getBounceLoc(objects[i], false, lastButtonPressed);
+							objects[i].health -= 1;
+							if (objects[i].health == 0) {
+								playSound("./sounds/LOZ_enemy_die.wav");
+							} else {
+								playSound("./sounds/LOZ_enemy_hit.wav");
+							}
+						}
+					}
+				} else if (lastButtonPressed == "up") {
+					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
+						//ctx.fillRect(x - 2, y, swordW, swordH);
+						if (objects[i].isEnemy) {
+							objects[i].needsBounce = true;
+							getBounceLoc(objects[i], false, lastButtonPressed);
+							objects[i].health -= 1;
+							if (objects[i].health == 0) {
+								playSound("./sounds/LOZ_enemy_die.wav");
+							} else {
+								playSound("./sounds/LOZ_enemy_hit.wav");
+							}
+						}
+					}
+				} else {
+					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
+						//ctx.fillRect(x, y, swordW, swordH);
+						if (objects[i].isEnemy) {
+							objects[i].needsBounce = true;
+							getBounceLoc(objects[i], false, lastButtonPressed);
+							objects[i].health -= 1;
+							if (objects[i].health == 0) {
+								playSound("./sounds/LOZ_enemy_die.wav");
+							} else {
+								playSound("./sounds/LOZ_enemy_hit.wav");
+							}
 						}
 					}
 				}
+			}
+		}
+	}
+
+	function getBounceLoc(gObject, ignoresObjects, direction) {
+		let currRow = Math.floor(gObject.y / 16);
+		let currCol = Math.floor(gObject.x / 16);
+		if (direction == "up") {
+			if (gameMap[currRow - 1][currCol] == 2) {
+				gObject.bounceY = gObject.y - 16;
+				gObject.bounceX = gObject.x;
+			} else {
+				gObject.bounceY = gObject.y;
+				gObject.bounceX = gObject.x;
+			}
+		}
+		if (direction == "down") {
+			if (gameMap[currRow + 1][currCol] == 2) {
+				gObject.bounceY = gObject.y + 16;
+				gObject.bounceX = gObject.x;
+			} else {
+				gObject.bounceY = gObject.y;
+				gObject.bounceX = gObject.x;
+			}
+		}
+		if (direction == "left") {
+			if (gameMap[currRow][currCol - 1] == 2) {
+				gObject.bounceX = gObject.x - 16;
+				gObject.bounceY = gObject.y;
+			} else {
+				gObject.bounceY = gObject.y;
+				gObject.bounceX = gObject.x;
+			}
+		}
+		if (direction == "right") {
+			if (gameMap[currRow][currCol + 1] == 2) {
+				gObject.bounceX = gObject.x + 16;
+				gObject.bounceY = gObject.y;
+			} else {
+				gObject.bounceY = gObject.y;
+				gObject.bounceX = gObject.x;
 			}
 		}
 	}
@@ -763,6 +657,22 @@
 							ctx.drawImage(enemies, 90, 30, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
 						}
 					}
+                    if (gameObjects[i].needsBounce) {
+                        if (gameObjects[i].x != gameObjects[i].bounceX) {
+                            if (gameObjects[i].bounceX > gameObjects[i].x) {
+                                gameObjects[i].x += 4;
+                            } else {
+                                gameObjects[i].x -= 4;
+                            }
+                        }
+                        if (gameObjects[i].y != gameObjects[i].bounceY) {
+                            if (gameObjects[i].bounceY > gameObjects[i].y) {
+                                gameObjects[i].y += 4;
+                            } else {
+                                gameObjects[i].y -= 4;
+                            }
+                        }
+                    }
 				}
 			}
 		}
@@ -781,6 +691,7 @@
 		}, 1000 / fps);
 	}
 
+    // computed properties
 	function heartFill(index) {
 		if (currentLinkHearts == index + 0.5) {
 			return "url(#repeat)";
@@ -790,6 +701,11 @@
 			return "white";
 		}
 	}
+
+    // set starting game map
+    gameMap = maps[0].map;
+	gameObjects = maps[0].gameobjects;
+
 	draw();
 </script>
 
