@@ -21,6 +21,8 @@
 	chars1.src = "/images/chars.png";
 	let chars2 = new Image();
 	chars2.src = "/images/chars2.png";
+	let enemies = new Image();
+	enemies.src = "/images/enemies.png";
 	let animationCounter = 0;
 	let currentAnimation = 0;
 	let animationSpeed = 10;
@@ -39,6 +41,10 @@
 	let keyAmount = 0;
 	let bombAmount = 0;
 	let swordEquipped = 0;
+
+	let hasSword = false;
+	let isAttacking = false;
+	let canAttackAgain = true;
 
 	onMount(async () => {
 		canvas = document.getElementById("myCanvas");
@@ -70,11 +76,22 @@
 		this.pickUpItemNum = 0;
 		this.isFlame = false;
 		this.isOldWoman = false;
-        this.isRupee = false;
-        this.rupeeValue = 1;
+		this.isRupee = false;
+		this.rupeeValue = 1;
 
-        this.isEnemy = false;
-        this.enemyType = 0;
+		this.isEnemy = false;
+		this.enemyType = 0;
+		this.nextX = 0;
+		this.nextY = 0;
+		this.isAttacking = false;
+		this.health = 0;
+		this.direction = "up";
+		this.enemy = [];
+		this.counter = 0;
+		this.frame = 0;
+		this.needsBounce = false;
+		this.bounceX = 0;
+		this.bounceY = 0;
 	}
 
 	function MapBundle(m, o) {
@@ -102,6 +119,12 @@
 			downPressed = true;
 			lastButtonPressed = "down";
 		}
+		if (e.keyCode == 70 && canAttackAgain && hasSword) {
+			isAttacking = true;
+			currentAnimation = 0;
+			canAttackAgain = false;
+			playSound("./sounds/LOZ_sword_slash.wav");
+		}
 	}
 
 	function keyUpHandler(e) {
@@ -120,7 +143,6 @@
 		let speed = 2;
 		animationCounter++;
 		if (playPickUpItemAnimation) {
-			console.log("play pickupanimation");
 			animationCounter++;
 			if (animationCounter < 300) {
 				ctx.drawImage(link1, 1, 150, 16, 16, linkX, linkY, 16, 16);
@@ -176,7 +198,49 @@
 					break;
 			}
 		} else {
-			if (leftPressed && !collision(linkX - speed, linkY, gameMap)) {
+			if (isAttacking && hasSword) {
+				if (currentAnimation == 0) {
+					if (lastButtonPressed == "down") {
+						ctx.drawImage(link1, 0, 60, 16, 16, linkX, linkY, 16, 16);
+					}
+					if (lastButtonPressed == "up") {
+						ctx.drawImage(link1, 62, 60, 16, 16, linkX, linkY, 16, 16);
+					}
+					if (lastButtonPressed == "left") {
+						ctx.drawImage(link1, 30, 60, 16, 16, linkX, linkY, 16, 16);
+					}
+					if (lastButtonPressed == "right") {
+						ctx.drawImage(link1, 91, 60, 16, 16, linkX, linkY, 16, 16);
+					}
+				}
+				if (currentAnimation == 1) {
+					if (lastButtonPressed == "down") {
+						ctx.drawImage(link1, 0, 84, 16, 27, linkX, linkY, 16, 27);
+                        gameObjectCollision(linkX + 7, linkY + 16, gameObjects, false, true);
+					}
+					if (lastButtonPressed == "up") {
+						ctx.drawImage(link1, 62, 84, 16, 26, linkX, linkY - 14, 16, 26);
+                        gameObjectCollision(linkX + 3, linkY - 14, gameObjects, false, true);
+					}
+					if (lastButtonPressed == "left") {
+						ctx.drawImage(link1, 22, 84, 26, 27, linkX - 10, linkY - 8, 27, 27);
+                        gameObjectCollision(linkX - 8, linkY + 5, gameObjects, false, true);
+					}
+					if (lastButtonPressed == "right") {
+						ctx.drawImage(link1, 84, 84, 30, 26, linkX, linkY - 8, 30, 26);
+                        gameObjectCollision(linkX + 14, linkY + 5, gameObjects, false, true);
+					}
+				}
+				if (animationCounter >= 6) {
+					currentAnimation++;
+					animationCounter = 0;
+					if (currentAnimation > 1) {
+						currentAnimation = 0;
+						isAttacking = false;
+						canAttackAgain = true;
+					}
+				}
+			} else if (leftPressed && !collision(linkX - speed, linkY, gameMap)) {
 				linkX -= speed;
 				if (currentAnimation == 0) {
 					ctx.drawImage(link1, 30, 0, 16, 16, linkX, linkY, 16, 16);
@@ -278,6 +342,16 @@
 	gO.newLinkX = 120;
 	gO.newLinkY = 220;
 	gO.isPortal = true;
+	objects7_7.push(gO);
+
+	gO = new GameObject();
+	gO.x = 160;
+	gO.y = 184;
+	gO.width = 16;
+	gO.height = 16;
+	gO.isEnemy = true;
+	gO.enemyType = 1;
+	gO.direction = "left";
 	objects7_7.push(gO);
 
 	let bundle = new MapBundle(map7_7, objects7_7);
@@ -402,7 +476,7 @@
 		return false;
 	}
 
-	function gameObjectCollision(x, y, objects, isLink) {
+	function gameObjectCollision(x, y, objects, isLink, isSword) {
 		if (isLink) {
 			for (let i = 0; i < objects.length; i++) {
 				if (x <= objects[i].x + objects[i].width && x + 16 >= objects[i].x && y <= objects[i].y + objects[i].height && y + 16 >= objects[i].y) {
@@ -521,12 +595,37 @@
 							case 14:
 								lastPickUpItem = gameObjects[i].pickUpItemNum;
 								swordEquipped = 1;
+								hasSword = true;
 								animationCounter = 0;
 								playSound("./sounds/Item.mp3");
 						}
 
 						objects.splice(i, 1);
 						animationCounter = 0;
+					}
+				}
+			}
+		} else {
+			let swordW = 11;
+			let swordH = 3;
+			if (lastButtonPressed == "up" || lastButtonPressed == "down") {
+				swordW = 3;
+				swordH = 11;
+			}
+
+			for (let i = 0; i < objects.length; i++) {
+				if (x <= objects[i].x + objects[i].width &&
+                    x + swordW >= objects[i].x &&
+                    y <= objects[i].y + objects[i].height &&
+                    y + swordH >= objects[i].y)
+                {
+					if (objects[i].isEnemy) {
+						objects[i].health -= 1;
+						if (objects[i].health <= 0) {
+							playSound("./sounds/LOZ_enemy_die.wav");
+						} else {
+							playSound("./sounds/LOZ_enemy_hit.wav");
+						}
 					}
 				}
 			}
@@ -624,6 +723,47 @@
 			}
 			if (gameObjects[i].isOldWoman) {
 				ctx.drawImage(chars1, 35, 11, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+			}
+			if (gameObjects[i].isEnemy) {
+				if (gameObjects[i].enemyType == 1) {
+					gameObjects[i].counter++;
+					if (gameObjects[i].counter >= 10) {
+						gameObjects[i].frame++;
+						gameObjects[i].counter = 0;
+						if (gameObjects[i].frame > 1) {
+							gameObjects[i].frame = 0;
+						}
+					}
+					if (gameObjects[i].direction == "down") {
+						if (gameObjects[i].frame == 0) {
+							ctx.drawImage(enemies, 0, 0, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+						if (gameObjects[i].frame == 1) {
+							ctx.drawImage(enemies, 0, 30, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+					} else if (gameObjects[i].direction == "up") {
+						if (gameObjects[i].frame == 0) {
+							ctx.drawImage(enemies, 60, 0, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+						if (gameObjects[i].frame == 1) {
+							ctx.drawImage(enemies, 60, 30, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+					} else if (gameObjects[i].direction == "left") {
+						if (gameObjects[i].frame == 0) {
+							ctx.drawImage(enemies, 30, 0, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+						if (gameObjects[i].frame == 1) {
+							ctx.drawImage(enemies, 30, 30, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+					} else {
+						if (gameObjects[i].frame == 0) {
+							ctx.drawImage(enemies, 90, 0, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+						if (gameObjects[i].frame == 1) {
+							ctx.drawImage(enemies, 90, 30, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
+						}
+					}
+				}
 			}
 		}
 	}
