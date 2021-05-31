@@ -1,7 +1,8 @@
 <script>
 	import { onMount } from "svelte";
-    import { GameObject } from "../scripts/classes";
-    import maps from "../scripts/maps";
+	import { GameObject } from "../scripts/classes";
+    import { Rupee } from "../scripts/objects";
+	import maps from "../scripts/maps";
 
 	let canvas;
 	let ctx;
@@ -13,7 +14,7 @@
 	let leftPressed = false;
 	let upPressed = false;
 	let downPressed = false;
-    let worldTiles = new Image();
+	let worldTiles = new Image();
 	worldTiles.src = "images/tiles-overworld.png";
 	let link1 = new Image();
 	link1.src = "images/link.png";
@@ -50,7 +51,7 @@
 		ctx = canvas.getContext("2d");
 	});
 
-    // game functions
+	// game functions
 	function playSound(source) {
 		let sound = new Audio();
 		sound.src = source;
@@ -295,9 +296,13 @@
 						gameObjects = maps[objects[i].newMap].gameobjects;
 						linkX = objects[i].newLinkX;
 						linkY = objects[i].newLinkY;
-					}
 
-					if (objects[i].isPickUpItem) {
+					} else if (objects[i].isRupee) {
+                        rupeeAmount += objects[i].rupeeValue;
+                        objects.splice(i, 1);
+                        playSound("./sounds/LOZ_get_rupee.wav");
+
+                    } else if (objects[i].isPickUpItem) {
 						playPickUpItemAnimation = true;
 						///There are a number of pick up items. The first 8 are selctable within
 						/// the inventory screen. The following 6 sit on top of the selectable inventory
@@ -426,7 +431,6 @@
 			for (let i = 0; i < objects.length; i++) {
 				if (lastButtonPressed == "left") {
 					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
-						//ctx.fillRect(x + 2, (y+6), swordW, swordH);
 						if (objects[i].isEnemy) {
 							objects[i].needsBounce = true;
 							getBounceLoc(objects[i], false, lastButtonPressed);
@@ -440,7 +444,6 @@
 					}
 				} else if (lastButtonPressed == "right") {
 					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
-						//ctx.fillRect(x - 2, (y+6), swordW, swordH);
 						if (objects[i].isEnemy) {
 							objects[i].needsBounce = true;
 							getBounceLoc(objects[i], false, lastButtonPressed);
@@ -454,7 +457,6 @@
 					}
 				} else if (lastButtonPressed == "up") {
 					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
-						//ctx.fillRect(x - 2, y, swordW, swordH);
 						if (objects[i].isEnemy) {
 							objects[i].needsBounce = true;
 							getBounceLoc(objects[i], false, lastButtonPressed);
@@ -468,7 +470,6 @@
 					}
 				} else {
 					if (x <= objects[i].x + objects[i].width && x + swordW >= objects[i].x && y <= objects[i].y + objects[i].height && y + swordH >= objects[i].y) {
-						//ctx.fillRect(x, y, swordW, swordH);
 						if (objects[i].isEnemy) {
 							objects[i].needsBounce = true;
 							getBounceLoc(objects[i], false, lastButtonPressed);
@@ -657,22 +658,58 @@
 							ctx.drawImage(enemies, 90, 30, 16, 16, gameObjects[i].x, gameObjects[i].y, 16, 16);
 						}
 					}
-                    if (gameObjects[i].needsBounce) {
-                        if (gameObjects[i].x != gameObjects[i].bounceX) {
-                            if (gameObjects[i].bounceX > gameObjects[i].x) {
-                                gameObjects[i].x += 4;
-                            } else {
-                                gameObjects[i].x -= 4;
-                            }
-                        }
-                        if (gameObjects[i].y != gameObjects[i].bounceY) {
-                            if (gameObjects[i].bounceY > gameObjects[i].y) {
-                                gameObjects[i].y += 4;
-                            } else {
-                                gameObjects[i].y -= 4;
-                            }
-                        }
-                    }
+					if (gameObjects[i].needsBounce) {
+						if (gameObjects[i].x != gameObjects[i].bounceX) {
+							if (gameObjects[i].bounceX > gameObjects[i].x) {
+								gameObjects[i].x += 4;
+							} else if (gameObjects[i].bounceX < gameObjects[i].x) {
+								gameObjects[i].x -= 4;
+							}
+						} else if (gameObjects[i].y != gameObjects[i].bounceY) {
+							if (gameObjects[i].bounceY > gameObjects[i].y) {
+								gameObjects[i].y += 4;
+							} else if (gameObjects[i].bounceY < gameObjects[i].y) {
+								gameObjects[i].y -= 4;
+							}
+						} else {
+							gameObjects[i].needsBounce = false;
+							if (gameObjects[i].health <= 0) {
+                                // enemy has died, determine rupee chance
+								let rupeeChance = Math.floor(Math.random() * 10);
+								if (rupeeChance < 10) {
+									let rupeeObject = new Rupee(gameObjects[i].x + 4, gameObjects[i].y);
+                                    // determine rupee value
+									let rupeeValueChance = Math.floor(Math.random() * 10);
+									if (rupeeValueChance < 2) {
+										rupeeObject.rupeeValue = 5;
+									} else {
+										rupeeObject.rupeeValue = 1;
+									}
+									gameObjects.push(rupeeObject);
+								}
+                                // remove the dead enemy from the game
+								gameObjects.splice(i, 1);
+							}
+						}
+					}
+				}
+			}
+			if (gameObjects[i].isRupee) {
+				if (gameObjects[i].rupeeValue == 1) {
+					gameObjects[i].counter += 1;
+					if (gameObjects[i].counter % 5 == 0) {
+						gameObjects[i].rupeeImage += 1;
+					}
+					if (gameObjects[i].rupeeImage > 1) {
+						gameObjects[i].rupeeImage = 0;
+					}
+					if (gameObjects[i].rupeeImage == 0) {
+						ctx.drawImage(link1, 244, 225, 8, 16, gameObjects[i].x, gameObjects[i].y, 8, 16);
+					} else {
+						ctx.drawImage(link1, 274, 225, 8, 16, gameObjects[i].x, gameObjects[i].y, 8, 16);
+					}
+				} else {
+					ctx.drawImage(link1, 274, 225, 8, 16, gameObjects[i].x, gameObjects[i].y, 8, 16);
 				}
 			}
 		}
@@ -691,7 +728,7 @@
 		}, 1000 / fps);
 	}
 
-    // computed properties
+	// computed properties
 	function heartFill(index) {
 		if (currentLinkHearts == index + 0.5) {
 			return "url(#repeat)";
@@ -702,8 +739,8 @@
 		}
 	}
 
-    // set starting game map
-    gameMap = maps[0].map;
+	// set starting game map
+	gameMap = maps[0].map;
 	gameObjects = maps[0].gameobjects;
 
 	draw();
@@ -740,7 +777,7 @@
 		<div class="main-hand">
 			<span class="buttonMap">F</span>
 			{#if swordEquipped}
-				<img src="images/hud_woodSword.png" alt="" />
+				<div class="hud-woodSword" />
 			{/if}
 		</div>
 
@@ -796,8 +833,8 @@
 					align-items: center;
 					justify-content: center;
 					height: 16px;
-					width: 12px;
-					margin-right: 1px;
+					width: 10px;
+					margin-right: 0;
 					img {
 						max-width: 100%;
 						max-height: 100%;
@@ -805,11 +842,11 @@
 				}
 				.value {
 					color: #fff;
-					font-size: 8px;
+					font-size: 10px;
 					span {
 						display: inline-block;
-						font-size: 5px;
-						margin-right: 2px;
+						font-size: 10px;
+						margin-right: 1px;
 					}
 				}
 			}
@@ -818,7 +855,7 @@
 		.alt-hand,
 		.main-hand {
 			position: relative;
-			height: 32px;
+			height: 28px;
 			width: 16px;
 			border: 2px solid blue;
 			border-radius: 3px;
@@ -837,11 +874,11 @@
 		}
 
 		.main-hand {
-			img {
-				width: 6px;
-				position: absolute;
-				top: 5px;
-				left: 3.5px;
+			.hud-woodSword {
+				width: 16px;
+				height: 24px;
+				background-image: url("/images/link.png");
+				background-position: -61px -190px;
 			}
 		}
 

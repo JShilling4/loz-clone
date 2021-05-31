@@ -26,6 +26,7 @@ class GameObject {
         this.isOldWoman = false;
         this.isRupee = false;
         this.rupeeValue = 1;
+        this.rupeeImage = 0;
         this.isEnemy = false;
         this.enemyType = 0;
         this.nextX = 0;
